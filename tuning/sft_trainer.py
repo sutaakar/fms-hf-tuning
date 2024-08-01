@@ -160,7 +160,7 @@ def train(
         trainer_controller_args.trainer_controller_config_file is not None
     ):
         tc_callback = TrainerControllerCallback(
-            trainer_controller_args.trainer_controller_config_file
+            trainer_controller_args.trainer_controller_config_file,
         )
         trainer_callbacks.append(tc_callback)
 
@@ -268,8 +268,14 @@ def train(
         formatted_train_dataset,
         formatted_validation_dataset,
         dataset_text_field,
-    ) = format_dataset(data_args, tokenizer)
-    data_collator = get_data_collator(packing, data_args.response_template, tokenizer)
+    ) = format_dataset(data_args, tokenizer, max_seq_length)
+    data_collator = get_data_collator(
+        packing,
+        data_args.response_template,
+        tokenizer,
+        formatted_train_dataset,
+        max_seq_length,
+    )
 
     if framework is not None and framework.requires_agumentation:
         model, (peft_config,) = framework.augmentation(
