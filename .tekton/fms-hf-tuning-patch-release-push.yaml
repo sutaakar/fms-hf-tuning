@@ -4,10 +4,9 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/red-hat-data-services/fms-hf-tuning?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/on-target-branch: "[refs/tags/*]"
+    pipelinesascode.tekton.dev/on-event: "[push]"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: fms-hf-tuning
@@ -22,9 +21,11 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/rhoai-tenant/fms-hf-tuning/fms-hf-tuning-patch-release:{{revision}}
+    value: quay.io/modh/fms-hf-tuning:{{revision}}
   - name: dockerfile
     value: build/Dockerfile
+  - name: tag-name
+    value: '' 
   pipelineSpec:
     finally:
     - name: show-sbom
@@ -119,6 +120,8 @@ spec:
       description: Path to a file with build arguments for buildah, see https://www.mankier.com/1/buildah-build#--build-arg-file
       name: build-args-file
       type: string
+    - name: tag-name
+      description: Git tag name
     results:
     - description: ""
       name: IMAGE_URL
@@ -133,6 +136,16 @@ spec:
       name: CHAINS-GIT_COMMIT
       value: $(tasks.clone-repository.results.commit)
     tasks:
+    - name: get-tag-name
+      taskSpec:
+        results:
+        - name: tag-name
+          description: Name of the git tag
+        steps:
+        - image: registry.access.redhat.com/ubi9/ubi
+          script: |
+            tag_name=$(basename {{target_branch}})
+            echo -n "${tag_name}" | tee "$(results.tag-name.path)"
     - name: init
       params:
       - name: image-url
@@ -415,6 +428,9 @@ spec:
       params:
       - name: IMAGE
         value: $(tasks.build-image-index.results.IMAGE_URL)
+      - name: ADDITIONAL_TAGS
+        value: 
+          - $(tasks.get-tag-name.results.tag-name)
       runAfter:
       - build-image-index
       taskRef:
