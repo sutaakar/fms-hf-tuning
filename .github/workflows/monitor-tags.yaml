@@ -1,0 +1,23 @@
+name: Monitor Upstream Tags
+
+on:
+  workflow_dispatch:
+
+jobs:
+  monitor-tags:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: fms-hf-tuning
+
+      - name: Install dependencies
+        run: |
+          git clone "https://github.com/foundation-model-stack/fms-hf-tuning.git" upstream
+          cd upstream
+          upstream_tags=$(git tag --list)
+          for tag in upstream_tags; do
+              echo $tag
+          done
+
