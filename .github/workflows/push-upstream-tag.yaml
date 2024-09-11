@@ -1,0 +1,43 @@
+name: Push Upstream Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Upstream Tag Name'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  push-upstream-tag:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: fms-hf-tuning
+
+      # Tekton files needs to be present in the tag for the konflux workflow to run
+      - name: Push Tag
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git clone "https://github.com/foundation-model-stack/fms-hf-tuning.git" upstream
+          cd upstream
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git config --local user.password ${GITHUB_TOKEN}
+
+          git fetch --tags
+          git checkout tags/${{ github.event.inputs.tag_name }}
+          git checkout -b add-tekton-files
+          git tag -d ${{ github.event.inputs.tag_name }}
+          cp -r ../fms-hf-tuning/.tekton ./.tekton
+          git add .tekton/
+          git commit -m "add tekton files"
+          git tag ${{ github.event.inputs.tag_name }}
+          git remote add fork "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push fork ${{ github.event.inputs.tag_name }}
